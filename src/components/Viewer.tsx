@@ -1,0 +1,31 @@
+import { useState } from 'react';
+import { ConfigPayload } from '../types';
+import { IntroStage } from './IntroStage';
+import { FireworkStage } from './FireworkStage';
+import { X } from 'lucide-react';
+
+interface ViewerProps {
+  payload: ConfigPayload;
+  onExit: () => void;
+}
+
+export function Viewer({ payload, onExit }: ViewerProps) {
+  const [stage, setStage] = useState<'intro' | 'show'>('intro');
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black">
+      <button 
+        onClick={onExit}
+        className="absolute top-4 right-4 z-[100] text-white/50 hover:text-white bg-black/20 p-2 rounded-full backdrop-blur-sm"
+      >
+        <X size={24} />
+      </button>
+
+      {stage === 'intro' ? (
+        <IntroStage onComplete={() => setStage('show')} />
+      ) : (
+        <FireworkStage payload={payload} />
+      )}
+    </div>
+  );
+}
