@@ -173,7 +173,12 @@ const store = {
 	// Load / persist select state to localStorage
 	// Mutates state because `store.load()` should only be called once immediately after store is created, before any subscriptions.
 	load() {
-		const serializedData = localStorage.getItem("cm_fireworks_data");
+		let serializedData = null;
+		try {
+			serializedData = localStorage.getItem("cm_fireworks_data");
+		} catch (e) {
+			return;
+		}
 		if (serializedData) {
 			const { schemaVersion, data } = JSON.parse(serializedData);
 
@@ -196,7 +201,16 @@ const store = {
 			console.log(`Loaded config (schema version ${schemaVersion})`);
 		}
 		// Deprecated data format. Checked with care (it's not namespaced).
-		else if (localStorage.getItem("schemaVersion") === "1") {
+		else {
+			let schemaVersion = null;
+			try {
+				schemaVersion = localStorage.getItem("schemaVersion");
+			} catch (e) {
+				schemaVersion = null;
+			}
+			if (schemaVersion !== "1") {
+				return;
+			}
 			let size;
 			// Attempt to parse data, ignoring if there is an error.
 			try {
@@ -217,18 +231,21 @@ const store = {
 
 	persist() {
 		const config = this.state.config;
-		localStorage.setItem(
-			"cm_fireworks_data",
-			JSON.stringify({
-				schemaVersion: "1.2",
-				data: {
-					quality: config.quality,
-					size: config.size,
-					skyLighting: config.skyLighting,
-					scaleFactor: config.scaleFactor,
-				},
-			})
-		);
+		try {
+			localStorage.setItem(
+				"cm_fireworks_data",
+				JSON.stringify({
+					schemaVersion: "1.2",
+					data: {
+						quality: config.quality,
+						size: config.size,
+						skyLighting: config.skyLighting,
+						scaleFactor: config.scaleFactor,
+					},
+				})
+			);
+		} catch (e) {
+		}
 	},
 };
 
@@ -2398,7 +2415,18 @@ const Spark = {
 //音效管理器
 const soundManager = {
 	baseURL: "./audio/",
-	ctx: new (window.AudioContext || window.webkitAudioContext)(),
+	ctx: null,
+	_ensureCtx() {
+		if (this.ctx) return this.ctx;
+		const AudioCtx = window.AudioContext || window.webkitAudioContext;
+		if (!AudioCtx) return null;
+		try {
+			this.ctx = new AudioCtx();
+			return this.ctx;
+		} catch (e) {
+			return null;
+		}
+	},
 	sources: {
 		lift: {
 			volume: 1,
@@ -2433,6 +2461,8 @@ const soundManager = {
 	},
 
 	preload() {
+		const ctx = this._ensureCtx();
+		if (!ctx) return Promise.resolve();
 		const allFilePromises = [];
 
 		function checkStatus(response) {
@@ -2458,7 +2488,7 @@ const soundManager = {
 					.then(
 						(data) =>
 							new Promise((resolve) => {
-								this.ctx.decodeAudioData(data, resolve);
+								ctx.decodeAudioData(data, resolve);
 							})
 					);
 
@@ -2475,10 +2505,14 @@ const soundManager = {
 	},
 
 	pauseAll() {
-		this.ctx.suspend();
+		const ctx = this._ensureCtx();
+		if (!ctx) return;
+		ctx.suspend();
 	},
 
 	resumeAll() {
+		const ctx = this._ensureCtx();
+		if (!ctx) return;
 		// Play a sound with no volume for iOS. This 'unlocks' the audio context when the user first enables sound.
 		this.playSound("lift", 0);
 		// Chrome mobile requires interaction before starting audio context.
@@ -2488,7 +2522,7 @@ const soundManager = {
 		// Perhaps a better solution is to track whether the user has interacted, and if not but they try enabling
 		// sound, show a tooltip that they should tap again to enable sound.
 		setTimeout(() => {
-			this.ctx.resume();
+			ctx.resume();
 		}, 250);
 	},
 
@@ -2506,6 +2540,8 @@ const soundManager = {
 	 *                             Note that a scale of 0 will mute the sound.
 	 */
 	playSound(type, scale = 1) {
+		const ctx = this._ensureCtx();
+		if (!ctx) return;
 		// Ensure `scale` is within valid range.
 		scale = MyMath.clamp(scale, 0, 1);
 
@@ -2540,15 +2576,15 @@ const soundManager = {
 		// So at a scale of 1, sound plays normally, but as scale approaches 0 speed approaches double.
 		const scaledPlaybackRate = initialPlaybackRate * (2 - scale);
 
-		const gainNode = this.ctx.createGain();
+		const gainNode = ctx.createGain();
 		gainNode.gain.value = scaledVolume;
 
 		const buffer = MyMath.randomChoice(source.buffers);
-		const bufferSource = this.ctx.createBufferSource();
+		const bufferSource = ctx.createBufferSource();
 		bufferSource.playbackRate.value = scaledPlaybackRate;
 		bufferSource.buffer = buffer;
 		bufferSource.connect(gainNode);
-		gainNode.connect(this.ctx.destination);
+		gainNode.connect(ctx.destination);
 		bufferSource.start(0);
 	},
 };

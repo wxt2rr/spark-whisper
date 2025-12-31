@@ -1,32 +1,45 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MailOpen, Sparkles } from 'lucide-react';
 import { initAudio, playExplosion } from '../utils/sound';
 
 interface IntroStageProps {
   onComplete: () => void;
+  to?: string;
+  from?: string;
+  introMessage?: string;
 }
 
-export function IntroStage({ onComplete }: IntroStageProps) {
+export function IntroStage({ 
+  onComplete, 
+  to = '你', 
+  from = '未来',
+  introMessage = '这是一封不需要回复的信。只要打开，烟花就会替你把话说出去。'
+}: IntroStageProps) {
   const [phase, setPhase] = useState<'sealed' | 'unsealed' | 'launching' | 'done'>('sealed');
   const [hasInteracted, setHasInteracted] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
-  const [launchKey, setLaunchKey] = useState(0);
   const holdStartMsRef = useRef<number | null>(null);
   const holdRafRef = useRef<number | null>(null);
 
   const holdDurationMs = 900;
-  const sealCircumference = useMemo(() => 2 * Math.PI * 18, []);
-  const sealDashOffset = useMemo(
-    () => sealCircumference * (1 - Math.min(1, Math.max(0, holdProgress))),
-    [holdProgress, sealCircumference]
-  );
+  const foldYPct = 44;
+  // const sealCircumference = useMemo(() => 2 * Math.PI * 18, []);
+  // const sealDashOffset = useMemo(
+  //   () => sealCircumference * (1 - Math.min(1, Math.max(0, holdProgress))),
+  //   [holdProgress, sealCircumference]
+  // );
 
-  const handleExplosion = useCallback(() => {
-    setPhase('done');
-    playExplosion();
-    window.setTimeout(onComplete, 140);
-  }, [onComplete]);
+  useEffect(() => {
+    if (phase === 'unsealed') {
+      const timer = setTimeout(() => {
+        setPhase('done');
+        playExplosion();
+        setTimeout(onComplete, 140);
+      }, 3500); // 0.6s flap + 0.8s slide + 2.1s wait
+      return () => clearTimeout(timer);
+    }
+  }, [phase, onComplete]);
 
   const stopHoldLoop = useCallback(() => {
     if (holdRafRef.current) window.cancelAnimationFrame(holdRafRef.current);
@@ -45,16 +58,14 @@ export function IntroStage({ onComplete }: IntroStageProps) {
       setHoldProgress(next);
       if (next >= 1) {
         stopHoldLoop();
-        setPhase('launching');
-        setLaunchKey(k => k + 1);
-        window.setTimeout(handleExplosion, 520);
+        setPhase('unsealed');
         return;
       }
       holdRafRef.current = window.requestAnimationFrame(tick);
     };
 
     holdRafRef.current = window.requestAnimationFrame(tick);
-  }, [handleExplosion, holdDurationMs, stopHoldLoop]);
+  }, [holdDurationMs, stopHoldLoop]);
 
   useEffect(() => {
     return () => stopHoldLoop();
@@ -66,157 +77,192 @@ export function IntroStage({ onComplete }: IntroStageProps) {
     initAudio();
   }, [hasInteracted]);
 
+  const showHint = phase === 'sealed' && (holdProgress <= 0 || holdProgress >= 1);
+
   return (
     <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden bg-black text-white select-none">
-      <div className="absolute inset-0 opacity-90">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(250,204,21,0.18),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_90%,rgba(167,139,250,0.16),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_60%,rgba(255,255,255,0.05),transparent_55%)]" />
-      </div>
+      <motion.div
+        className="absolute inset-0 z-0"
+        exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+        transition={{ duration: 1.2, ease: "easeInOut" }}
+      >
+        <div className="absolute inset-0 opacity-90">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(250,204,21,0.18),transparent_55%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_90%,rgba(167,139,250,0.16),transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_60%,rgba(255,255,255,0.05),transparent_55%)]" />
+        </div>
+      </motion.div>
 
       {phase !== 'done' && (
-        <div className="relative z-10 w-[320px] sm:w-[380px]">
-          <div className="text-center mb-6">
+        <motion.div 
+           className="relative z-10 w-[320px] sm:w-[380px]"
+           exit={{ opacity: 0, y: -40, scale: 0.95, filter: 'blur(4px)' }}
+           transition={{ duration: 0.8, ease: "easeInOut" }}
+        >
+          <div className="text-center mb-8">
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="text-sm text-white/60 tracking-wide"
+              className="flex items-center justify-center gap-3 text-sm text-amber-200/60 tracking-widest font-medium uppercase"
             >
+              <div className="h-px w-8 bg-gradient-to-r from-transparent to-amber-200/40" />
               时光邮局 · 特快件
+              <div className="h-px w-8 bg-gradient-to-l from-transparent to-amber-200/40" />
             </motion.div>
-            <div className="mt-2 text-3xl sm:text-4xl font-semibold tracking-widest text-white/90">
+            <div className="mt-2 text-5xl sm:text-6xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-b from-amber-100 via-yellow-200 to-amber-600 drop-shadow-[0_2px_10px_rgba(251,191,36,0.2)] font-serif" style={{ fontFamily: 'Times New Roman, serif' }}>
               2025
             </div>
           </div>
 
           <div className="relative h-[230px] sm:h-[260px]">
             <motion.div
-              animate={phase === 'launching' ? { scale: 0.98, filter: 'blur(1px)', opacity: 0.6 } : { scale: 1, filter: 'blur(0px)', opacity: 1 }}
+              animate={phase === 'unsealed' ? { scale: 1, filter: 'blur(0px)', opacity: 1 } : { scale: 1, filter: 'blur(0px)', opacity: 1 }}
               transition={{ type: 'spring', damping: 18, stiffness: 180 }}
               className="absolute inset-0"
             >
-              <div className="absolute inset-0 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-xl shadow-[0_30px_80px_rgba(0,0,0,0.65)]" />
+              {/* Envelope Body - Dark Premium Cardstock */}
+              <div className="absolute inset-0 rounded-xl bg-[#1c1c1c] shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),0_30px_60px_-12px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.05)]" />
+              
+              {/* Paper Texture Overlay (Noise) */}
+              <div className="absolute inset-0 rounded-xl opacity-[0.03] pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
-              <div className="absolute left-6 right-6 top-6 flex items-center justify-between text-xs text-white/55">
-                <div className="flex items-center gap-2">
-                  <Sparkles size={14} className="text-yellow-300/90" />
-                  <span>FROM · 未来</span>
-                </div>
+              {/* Letter Card (Inside) - Starts hidden lower */}
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={phase === 'unsealed' ? { y: -160, opacity: 1 } : { y: 20, opacity: 0 }}
+                transition={{ duration: 0.8, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute left-4 right-4 top-4 h-[200px] rounded-lg bg-[#fcfcfc] shadow-lg z-10 p-5 flex flex-col"
+              >
+                  <div className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold mb-3 border-b border-neutral-100 pb-2">
+                    A Letter from {from}
+                  </div>
+                  <div className="text-sm text-neutral-800 leading-relaxed font-serif tracking-wide italic opacity-90 flex-1">
+                    {introMessage}
+                  </div>
+                  <div className="mt-auto flex justify-end">
+                      <div className="w-16 h-16 opacity-10 bg-[url('https://api.iconify.design/mdi:postage-stamp.svg')] bg-no-repeat bg-contain" />
+                  </div>
+              </motion.div>
+
+              {/* Side Flaps (Front Layer 1) */}
+              <div
+                className="absolute left-0 top-0 bottom-0 w-1/2 bg-[#1f1f1f] z-20 shadow-[-1px_0_1px_rgba(255,255,255,0.05)]"
+                style={{ clipPath: `polygon(0 0, 100% ${foldYPct}%, 0 100%)` }}
+              />
+              <div
+                className="absolute right-0 top-0 bottom-0 w-1/2 bg-[#1a1a1a] z-20 shadow-[1px_0_1px_rgba(255,255,255,0.05)]"
+                style={{ clipPath: `polygon(100% 0, 0 ${foldYPct}%, 100% 100%)` }}
+              />
+
+              {/* Bottom Flap (Front Layer 2) */}
+              <div
+                style={{ clipPath: `polygon(0 100%, 50% ${foldYPct}%, 100% 100%)` }}
+                className="absolute inset-0 bg-gradient-to-t from-[#252525] to-[#1e1e1e] z-20 shadow-[0_-1px_1px_rgba(0,0,0,0.5)]"
+              />
+
+              {/* Address Label (On top of Bottom Flap) */}
+              <div className="absolute left-0 right-0 bottom-2 z-20 flex flex-col items-center justify-center pointer-events-none">
+                 <div className="flex flex-col items-center gap-1 opacity-90">
+                    <div className="text-[10px] text-amber-500/60 uppercase tracking-[0.2em] font-bold">To</div>
+                    <div className="text-2xl tracking-wide text-amber-50 font-serif italic drop-shadow-md">{to}</div>
+                 </div>
+                 <div className="mt-3 flex items-center gap-2 text-[9px] text-white/20 tracking-widest uppercase">
+                    <Sparkles size={9} />
+                    <span>From · {from}</span>
+                 </div>
               </div>
 
-              <div className="absolute left-6 right-6 top-14 rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
-                <div className="text-[11px] text-white/45">To</div>
-                <div className="mt-1 text-lg tracking-wide text-white/85">你</div>
-                <div className="mt-2 h-px bg-white/10" />
-                <div className="mt-2 text-[12px] text-white/55 leading-relaxed">
-                  这是一封不需要回复的信。只要打开，烟花就会替你把话说出去。
-                </div>
-              </div>
-
+              {/* Top Flap */}
               <motion.div
                 initial={false}
-                animate={phase === 'unsealed' || phase === 'launching' ? { rotateX: 160, y: -6 } : { rotateX: 0, y: 0 }}
-                transition={{ type: 'spring', damping: 20, stiffness: 140 }}
-                style={{ transformOrigin: 'top center', clipPath: 'polygon(0 0, 100% 0, 50% 65%)' }}
-                className="absolute top-0 left-0 right-0 h-[140px] rounded-t-3xl bg-gradient-to-b from-white/10 to-white/0"
-              />
-
-              <div
-                style={{ clipPath: 'polygon(0 100%, 50% 35%, 100% 100%)' }}
-                className="absolute bottom-0 left-0 right-0 h-[140px] bg-gradient-to-t from-white/8 to-white/0"
-              />
-
-              <div className="absolute left-0 top-[84px] bottom-[30px] w-[52%] bg-white/5" style={{ clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
-              <div className="absolute right-0 top-[84px] bottom-[30px] w-[52%] bg-white/6" style={{ clipPath: 'polygon(100% 0, 0 50%, 100% 100%)' }} />
+                animate={phase === 'unsealed' ? { rotateX: 180, zIndex: 1 } : { rotateX: 0, zIndex: 30 }}
+                transition={{ duration: 0.6, ease: "easeInOut" }}
+                style={{ transformOrigin: 'top center', clipPath: `polygon(0 0, 100% 0, 50% ${foldYPct}%)` }}
+                className="absolute inset-0 bg-gradient-to-b from-[#2a2a2a] to-[#222] shadow-[0_5px_15px_rgba(0,0,0,0.5)] border-t border-white/10"
+              >
+                 <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-50" />
+              </motion.div>
 
               <AnimatePresence>
                 {phase === 'sealed' && (
-                  <motion.button
-                    type="button"
-                    initial={{ opacity: 0, scale: 0.92 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.92 }}
-                    transition={{ type: 'spring', damping: 18, stiffness: 240 }}
-                    className="absolute left-1/2 top-[158px] -translate-x-1/2 w-[92px] h-[92px] rounded-full bg-gradient-to-b from-yellow-300/25 to-orange-500/15 border border-yellow-200/25 shadow-[0_12px_30px_rgba(250,204,21,0.15)] active:scale-[0.98]"
-                    onPointerDown={(e) => {
-                      ensureAudio();
-                      e.currentTarget.setPointerCapture(e.pointerId);
-                      startHoldLoop();
-                    }}
-                    onPointerUp={(e) => {
-                      e.currentTarget.releasePointerCapture(e.pointerId);
-                      stopHoldLoop();
-                      setHoldProgress(p => (p >= 1 ? p : 0));
-                    }}
-                    onPointerCancel={() => {
-                      stopHoldLoop();
-                      setHoldProgress(0);
-                    }}
-                    aria-label="长按解封"
+                  <div
+                    className="absolute z-40"
+                    style={{ left: '50%', top: `${foldYPct}%`, transform: 'translate(-50%, -50%)' }}
                   >
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <MailOpen size={22} className="text-yellow-100/90" />
-                    </div>
-                    <svg className="absolute inset-0" viewBox="0 0 44 44">
-                      <circle cx="22" cy="22" r="18" stroke="rgba(255,255,255,0.10)" strokeWidth="3" fill="none" />
-                      <circle
-                        cx="22"
-                        cy="22"
-                        r="18"
-                        stroke="rgba(250,204,21,0.85)"
-                        strokeWidth="3"
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeDasharray={sealCircumference}
-                        strokeDashoffset={sealDashOffset}
-                        transform="rotate(-90 22 22)"
-                      />
-                    </svg>
-                    <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-xs text-white/55 whitespace-nowrap">
-                      长按解封 · 自动放飞
-                    </div>
-                  </motion.button>
-                )}
-              </AnimatePresence>
-
-              <AnimatePresence>
-                {phase === 'launching' && (
-                  <motion.div
-                    key={launchKey}
-                    initial={{ y: 34, opacity: 0, scale: 0.98 }}
-                    animate={{ y: -240, opacity: 0, scale: 0.92, filter: 'blur(6px)' }}
-                    transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-                    className="absolute left-1/2 top-[74px] -translate-x-1/2 w-[86%]"
-                  >
-                    <div className="rounded-2xl bg-gradient-to-b from-white/12 to-white/6 border border-white/12 shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
-                      <div className="px-5 py-5">
-                        <div className="text-xs text-white/55 tracking-wide">已启封</div>
-                        <div className="mt-2 text-xl font-semibold text-white/90 tracking-wide">一份祝福</div>
-                        <div className="mt-3 text-sm text-white/65 leading-relaxed">正在放飞到夜空…</div>
+                    <motion.div
+                      initial={false}
+                      animate={showHint ? { opacity: 1, scale: [0.98, 1.04, 0.98] } : { opacity: 0, scale: 0.98 }}
+                      transition={{ duration: 1.6, repeat: showHint ? Infinity : 0, ease: 'easeInOut' }}
+                      className="absolute inset-[-14px] rounded-full border border-amber-200/25 shadow-[0_0_30px_rgba(251,191,36,0.12)]"
+                    />
+                    <motion.button
+                      type="button"
+                      initial={{ opacity: 0, scale: 0.92 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.92 }}
+                      transition={{ type: 'spring', damping: 18, stiffness: 240 }}
+                      className="w-[92px] h-[92px] rounded-full group"
+                      onPointerDown={(e) => {
+                        ensureAudio();
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                        startHoldLoop();
+                      }}
+                      onPointerUp={(e) => {
+                        e.currentTarget.releasePointerCapture(e.pointerId);
+                        stopHoldLoop();
+                        setHoldProgress(p => (p >= 1 ? p : 0));
+                      }}
+                      onPointerCancel={() => {
+                        stopHoldLoop();
+                        setHoldProgress(0);
+                      }}
+                      aria-label="长按解封"
+                    >
+                      {/* Wax Seal Body */}
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-600 via-yellow-600 to-amber-800 shadow-[0_6px_16px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_6px_rgba(0,0,0,0.4)] border border-amber-500/30 active:scale-[0.98] transition-transform duration-200">
+                        <div className="absolute inset-2 rounded-full border border-amber-800/30 shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]" />
                       </div>
-                    </div>
-                  </motion.div>
+
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 opacity-95">
+                        <div className="drop-shadow-[0_1px_0_rgba(255,255,255,0.2)]">
+                          <MailOpen size={22} className="text-amber-900" strokeWidth={2.5} />
+                        </div>
+                        <motion.div
+                          initial={false}
+                          animate={showHint ? { opacity: [0.55, 1, 0.55], y: [0, -1, 0] } : { opacity: 0.35, y: 0 }}
+                          transition={{ duration: 1.4, repeat: showHint ? Infinity : 0, ease: 'easeInOut' }}
+                          className="text-[11px] font-semibold tracking-[0.22em] text-amber-950/90 select-none"
+                        >
+                          长按解封
+                        </motion.div>
+                      </div>
+
+                      {/* Progress Circle Overlay */}
+                      <svg className="absolute inset-[-4px]" viewBox="0 0 44 44">
+                        <circle
+                          cx="22"
+                          cy="22"
+                          r="20"
+                          stroke="rgba(251,191,36,0.9)"
+                          strokeWidth="2"
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeDasharray={2 * Math.PI * 20}
+                          strokeDashoffset={2 * Math.PI * 20 * (1 - Math.min(1, Math.max(0, holdProgress)))}
+                          transform="rotate(-90 22 22)"
+                          className="drop-shadow-[0_0_4px_rgba(251,191,36,0.5)]"
+                        />
+                      </svg>
+                    </motion.button>
+                  </div>
                 )}
               </AnimatePresence>
             </motion.div>
-
-            <AnimatePresence>
-              {phase === 'launching' && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: [0, 1, 0] }}
-                  transition={{ duration: 0.55, times: [0, 0.2, 1] }}
-                  className="absolute inset-0 rounded-3xl bg-[radial-gradient(circle_at_50%_60%,rgba(250,204,21,0.35),transparent_60%)]"
-                />
-              )}
-            </AnimatePresence>
           </div>
 
-          <div className="mt-8 text-center text-xs text-white/35 leading-relaxed">
-            你打开的不是信，是一场烟花。
-          </div>
-        </div>
+
+        </motion.div>
       )}
     </div>
   );

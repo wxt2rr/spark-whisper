@@ -3,6 +3,7 @@ import { ConfigPayload } from '../types';
 import { IntroStage } from './IntroStage';
 import { FireworkStage } from './FireworkStage';
 import { X } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 
 interface ViewerProps {
   payload: ConfigPayload;
@@ -21,11 +22,19 @@ export function Viewer({ payload, onExit }: ViewerProps) {
         <X size={24} />
       </button>
 
-      {stage === 'intro' ? (
-        <IntroStage onComplete={() => setStage('show')} />
-      ) : (
-        <FireworkStage payload={payload} />
-      )}
+      <AnimatePresence mode="wait">
+        {stage === 'intro' ? (
+          <IntroStage 
+            key="intro"
+            onComplete={() => setStage('show')} 
+            to={payload.to}
+            from={payload.from}
+            introMessage={payload.introMessage}
+          />
+        ) : (
+          <FireworkStage key="firework" payload={payload} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

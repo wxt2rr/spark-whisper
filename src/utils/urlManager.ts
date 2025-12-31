@@ -13,6 +13,10 @@ export const decodePayload = (encoded: string): ConfigPayload | null => {
     const raw = JSON.parse(json) as unknown;
     if (!raw || typeof raw !== 'object') return null;
     const itemsRaw = (raw as { items?: unknown }).items;
+    const to = (raw as { to?: unknown }).to;
+    const from = (raw as { from?: unknown }).from;
+    const introMessage = (raw as { introMessage?: unknown }).introMessage;
+    
     if (!Array.isArray(itemsRaw)) return null;
 
     const items = itemsRaw
@@ -26,7 +30,12 @@ export const decodePayload = (encoded: string): ConfigPayload | null => {
       })
       .filter((v): v is { id: string; content: string } => !!v);
 
-    return { items };
+    return { 
+      items,
+      to: typeof to === 'string' ? to : undefined,
+      from: typeof from === 'string' ? from : undefined,
+      introMessage: typeof introMessage === 'string' ? introMessage : undefined
+    };
   } catch (e) {
     console.error('Failed to decode payload', e);
     return null;

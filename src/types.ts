@@ -5,4 +5,7 @@ export interface BlessingItem {
 
 export interface ConfigPayload {
   items: BlessingItem[];
+  to?: string;
+  from?: string;
+  introMessage?: string;
 }

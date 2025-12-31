@@ -28,6 +28,9 @@ export function ConfigForm({ onPreview }: ConfigFormProps) {
     { id: '1', content: '新年快乐！' },
     { id: '2', content: '万事如意！' },
   ]);
+  const [to, setTo] = useState('你');
+  const [from, setFrom] = useState('未来');
+  const [introMessage, setIntroMessage] = useState('这是一封不需要回复的信。只要打开，烟花就会替你把话说出去。');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -69,7 +72,7 @@ export function ConfigForm({ onPreview }: ConfigFormProps) {
   };
 
   const handlePublish = () => {
-    const payload: ConfigPayload = { items };
+    const payload: ConfigPayload = { items, to, from, introMessage };
     const encoded = encodePayload(payload);
     const url = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
     
@@ -86,6 +89,44 @@ export function ConfigForm({ onPreview }: ConfigFormProps) {
           定制你的 2026 祝福
         </h2>
         <p className="text-slate-400 text-sm mt-2">添加祝福语，生成专属烟花秀</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div>
+          <label className="block text-xs text-slate-400 mb-1 ml-1">To</label>
+          <input
+            type="text"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            placeholder="你"
+            className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1 ml-1">From</label>
+          <input
+            type="text"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            placeholder="未来"
+            className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/50 transition-colors"
+          />
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <label className="block text-xs text-slate-400 mb-1 ml-1">信封留言</label>
+        <textarea
+          value={introMessage}
+          onChange={(e) => setIntroMessage(e.target.value)}
+          placeholder="这是一封不需要回复的信..."
+          rows={2}
+          className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
+        />
+      </div>
+
+      <div className="mb-1 ml-1">
+        <label className="block text-xs text-slate-400">烟花文字</label>
       </div>
 
       <DndContext
@@ -118,7 +159,7 @@ export function ConfigForm({ onPreview }: ConfigFormProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <button
-            onClick={() => onPreview({ items })}
+            onClick={() => onPreview({ items, to, from, introMessage })}
             className="flex items-center justify-center gap-2 py-3 px-6 bg-slate-700 hover:bg-slate-600 rounded-xl font-semibold transition-all"
         >
             <Eye size={18} /> 预览
