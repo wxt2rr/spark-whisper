@@ -14,6 +14,35 @@ export function FireworkStage({ payload }: FireworkStageProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const isPausedRef = useRef(false);
   const [isReady, setIsReady] = useState(false);
+  const [viewport, setViewport] = useState(() => {
+    if (typeof window === 'undefined') return { width: 0, height: 0 };
+    return { width: window.innerWidth, height: window.innerHeight };
+  });
+
+  useEffect(() => {
+    const update = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+    };
+  }, []);
+
+  const isMobile = viewport.width <= 768;
+  const shouldRotateLandscape = isMobile && viewport.height > viewport.width;
+  const rotatedStageStyle = shouldRotateLandscape
+    ? {
+        position: 'absolute' as const,
+        left: '50%',
+        top: '50%',
+        width: `${viewport.height}px`,
+        height: `${viewport.width}px`,
+        transform: 'translate(-50%, -50%) rotate(90deg)',
+        transformOrigin: 'center',
+      }
+    : undefined;
 
   const postToSim = useCallback((message: unknown) => {
     const targetWindow = iframeRef.current?.contentWindow;
@@ -327,16 +356,29 @@ export function FireworkStage({ payload }: FireworkStageProps) {
 
   return (
     <div
-      className="relative w-full h-full bg-black"
+      className="relative w-full h-full bg-black overflow-hidden"
     >
-      <iframe
-        ref={iframeRef}
-        title="Firework Simulator"
-        srcDoc={srcDoc}
-        className="absolute inset-0 w-full h-full border-0"
-        allow="autoplay; fullscreen"
-        allowFullScreen
-      />
+      {shouldRotateLandscape ? (
+        <div style={rotatedStageStyle}>
+          <iframe
+            ref={iframeRef}
+            title="Firework Simulator"
+            srcDoc={srcDoc}
+            className="absolute inset-0 w-full h-full border-0"
+            allow="autoplay; fullscreen"
+            allowFullScreen
+          />
+        </div>
+      ) : (
+        <iframe
+          ref={iframeRef}
+          title="Firework Simulator"
+          srcDoc={srcDoc}
+          className="absolute inset-0 w-full h-full border-0"
+          allow="autoplay; fullscreen"
+          allowFullScreen
+        />
+      )}
     </div>
   );
 }
