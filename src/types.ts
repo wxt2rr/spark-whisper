@@ -8,4 +8,6 @@ export interface ConfigPayload {
   to?: string;
   from?: string;
   introMessage?: string;
+  envelopeTitle?: string;
+  envelopeYear?: string;
 }

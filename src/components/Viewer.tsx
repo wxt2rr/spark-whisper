@@ -30,6 +30,8 @@ export function Viewer({ payload, onExit }: ViewerProps) {
             to={payload.to}
             from={payload.from}
             introMessage={payload.introMessage}
+            envelopeTitle={payload.envelopeTitle}
+            envelopeYear={payload.envelopeYear}
           />
         ) : (
           <FireworkStage key="firework" payload={payload} />

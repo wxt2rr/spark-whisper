@@ -16,6 +16,8 @@ export const decodePayload = (encoded: string): ConfigPayload | null => {
     const to = (raw as { to?: unknown }).to;
     const from = (raw as { from?: unknown }).from;
     const introMessage = (raw as { introMessage?: unknown }).introMessage;
+    const envelopeTitle = (raw as { envelopeTitle?: unknown }).envelopeTitle;
+    const envelopeYear = (raw as { envelopeYear?: unknown }).envelopeYear;
     
     if (!Array.isArray(itemsRaw)) return null;
 
@@ -34,7 +36,9 @@ export const decodePayload = (encoded: string): ConfigPayload | null => {
       items,
       to: typeof to === 'string' ? to : undefined,
       from: typeof from === 'string' ? from : undefined,
-      introMessage: typeof introMessage === 'string' ? introMessage : undefined
+      introMessage: typeof introMessage === 'string' ? introMessage : undefined,
+      envelopeTitle: typeof envelopeTitle === 'string' ? envelopeTitle : undefined,
+      envelopeYear: typeof envelopeYear === 'string' ? envelopeYear : undefined
     };
   } catch (e) {
     console.error('Failed to decode payload', e);

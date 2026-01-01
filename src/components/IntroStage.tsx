@@ -8,13 +8,17 @@ interface IntroStageProps {
   to?: string;
   from?: string;
   introMessage?: string;
+  envelopeTitle?: string;
+  envelopeYear?: string;
 }
 
 export function IntroStage({ 
   onComplete, 
   to = '你', 
   from = '未来',
-  introMessage = '这是一封不需要回复的信。只要打开，烟花就会替你把话说出去。'
+  introMessage = '这是一封不需要回复的信。只要打开，烟花就会替你把话说出去。',
+  envelopeTitle = '时光邮局 · 特快件',
+  envelopeYear = String(new Date().getFullYear())
 }: IntroStageProps) {
   const [phase, setPhase] = useState<'sealed' | 'unsealed' | 'launching' | 'done'>('sealed');
   const [hasInteracted, setHasInteracted] = useState(false);
@@ -78,6 +82,8 @@ export function IntroStage({
   }, [hasInteracted]);
 
   const showHint = phase === 'sealed' && (holdProgress <= 0 || holdProgress >= 1);
+  const showEnvelopeTitle = envelopeTitle.trim().length > 0;
+  const showEnvelopeYear = envelopeYear.trim().length > 0;
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden bg-black text-white select-none">
@@ -100,19 +106,23 @@ export function IntroStage({
            transition={{ duration: 0.8, ease: "easeInOut" }}
         >
           <div className="text-center mb-8">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="flex items-center justify-center gap-3 text-sm text-amber-200/60 tracking-widest font-medium uppercase"
-            >
-              <div className="h-px w-8 bg-gradient-to-r from-transparent to-amber-200/40" />
-              时光邮局 · 特快件
-              <div className="h-px w-8 bg-gradient-to-l from-transparent to-amber-200/40" />
-            </motion.div>
-            <div className="mt-2 text-5xl sm:text-6xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-b from-amber-100 via-yellow-200 to-amber-600 drop-shadow-[0_2px_10px_rgba(251,191,36,0.2)] font-serif" style={{ fontFamily: 'Times New Roman, serif' }}>
-              2025
-            </div>
+            {showEnvelopeTitle && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="flex items-center justify-center gap-3 text-sm text-amber-200/60 tracking-widest font-medium uppercase"
+              >
+                <div className="h-px w-8 bg-gradient-to-r from-transparent to-amber-200/40" />
+                {envelopeTitle}
+                <div className="h-px w-8 bg-gradient-to-l from-transparent to-amber-200/40" />
+              </motion.div>
+            )}
+            {showEnvelopeYear && (
+              <div className="mt-2 text-5xl sm:text-6xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-b from-amber-100 via-yellow-200 to-amber-600 drop-shadow-[0_2px_10px_rgba(251,191,36,0.2)] font-serif" style={{ fontFamily: 'Times New Roman, serif' }}>
+                {envelopeYear}
+              </div>
+            )}
           </div>
 
           <div className="relative h-[230px] sm:h-[260px]">
